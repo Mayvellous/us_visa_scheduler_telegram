@@ -6,7 +6,10 @@ import requests
 import configparser
 import traceback
 import yaml
-from datetime import datetime
+from copy import deepcopy
+from dataclasses import dataclass
+from datetime import datetime, timedelta
+
 
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
@@ -116,64 +119,86 @@ def get_first_available_appointments(embassy_links):
     return res
 
 
+@dataclass
+class UserState:
+    cookies: any = None
+    id: int = None
+    first_loop: bool = True
+    ban_datetime: datetime = None
+    config: dict = None
+
+
 if config['chrome_driver']['local_use']:
     options = Options()
     options.add_argument("--headless")
     options.add_argument("--disable-extensions")
     options.add_argument("--disable-dev-shm-usage")
     options.add_argument("--no-sandbox")
+    options.add_argument("--incognito")
     driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
 else:
     driver = webdriver.Remote(command_executor=config['chrome_driver']['hub_address'], options=webdriver.ChromeOptions())
 
-def get_user_id():
+
+states = []
+for i in range(len(config['users'])):
+    states.append(UserState(id=i, config=config['users'][i]))
+
+
+def create_users_iterator():
     id = 0
     while True:
-        yield id
+        yield states[id]
         id = (id + 1) % len(config['users'])
 
 
 if __name__ == "__main__":
-    first_loop = True
-    prev_available_appointments = None
-    get_user = get_user_id()
-    user_id = None
+    prev_result_per_applicants = {}
+    embassy_config = config['embassies'][0]
+    users_iter = create_users_iterator()
     banned_count = 0
+    t0 = time.time()
+    Req_count = 0
     while 1:
         try:
-            if first_loop:
-                user_id = next(get_user)
-                embassy_config = config['embassies'][0]
-                links = get_links_for_embassy(config['users'][user_id], embassy_config)
-                t0 = time.time()
-                total_time = 0
-                Req_count = 0
+            user_state = next(users_iter)
+            if user_state.ban_datetime and datetime.now() - user_state.ban_datetime < timedelta(hours=config['time']['ban_cooldown_hours']):
+                print(f"User {user_state.config['email']} is waiting for unban")
+                time.sleep(5)
+                continue
+
+            links = get_links_for_embassy(user_state.config, embassy_config)
+            if user_state.first_loop:
                 start_process(
-                    user_config=config['users'][user_id],
+                    user_config=user_state.config,
                     embassy_config=embassy_config,
                     embassy_links=links,
                 )
-                first_loop = False
+                user_state.cookies = {x['name']: x['value'] for x in driver.get_cookies()}
+                user_state.first_loop = False
 
+            driver.delete_all_cookies()
+            for name, value in user_state.cookies.items():
+                driver.add_cookie({'name': name, 'value': value})
             Req_count += 1
             print("-" * 60 + f"\nRequest count: {Req_count}, Log time: {datetime.today()}\n")
             appointments = get_first_available_appointments(links)
             if all(x == "No Appointments Available" for x in appointments.values()):
-                print(f"Probably user {config['users'][user_id]['email']} is banned")
+                print(f"Probably user {user_state.config['email']} is banned")
+                user_state.ban_datetime = datetime.now()
                 banned_count += 1
                 if banned_count == len(config['users']):
                     print(f"All users are banned, resting for {config['time']['ban_cooldown_hours']}h")
                     time.sleep(config['time']['ban_cooldown_hours'] * hour)
                     banned_count = 0
                 driver.get(links['sign_out_link'])
-                first_loop = True
+                user_state.first_loop = True
                 continue
-            if appointments is not None and appointments != prev_available_appointments:
-                send_notification('SUCCESS', json.dumps(appointments, sort_keys=True))
+            if appointments is not None and appointments != prev_result_per_applicants.get(user_state.config['applicants']):
+                send_notification('SUCCESS', f'Applicants: {user_state.config["applicants"]}\n' + json.dumps(appointments, sort_keys=True))
             else:
                 RETRY_WAIT_TIME = random.randint(config['time']['retry_lower_bound'], config['time']['retry_upper_bound'])
-                t1 = time.time()
-                total_time = t1 - t0
+                total_time = time.time() - t0
                 msg = "\nWorking Time:  ~ {:.2f} minutes".format(total_time/minute)
                 print(msg)
                 if total_time > config['time']['work_limit_hours'] * hour:
@@ -181,13 +206,14 @@ if __name__ == "__main__":
                     print("REST", f"Break-time after {config['time']['work_limit_hours']} hours | Repeated {Req_count} times")
                     driver.get(links['sign_out_link'])
                     time.sleep(config['time']['work_cooldown_hours'] * hour)
-                    first_loop = True
+                    user_state.first_loop = True
+                    t0 = time.time()
                 else:
                     msg = "Retry Wait Time: "+ str(RETRY_WAIT_TIME)+ " seconds"
                     print(msg)
                     time.sleep(RETRY_WAIT_TIME)
             if appointments is not None:
-                prev_available_appointments = appointments
+                prev_result_per_applicants[user_state.config['applicants']] = appointments
         except:
             # Exception Occured
             print(f"Break the loop after exception! I will continue in a few minutes\n")
