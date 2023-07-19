@@ -63,7 +63,7 @@ def send_notification(title, msg):
     requests.post(url, data)
 
 
-def auto_action(label, find_by, el_type, action, value, sleep_time=0):
+def auto_action(driver, label, find_by, el_type, action, value, sleep_time=0):
     print("\t"+ label +":", end="")
     # Find Element By
     match find_by.lower():
@@ -90,28 +90,29 @@ def auto_action(label, find_by, el_type, action, value, sleep_time=0):
         time.sleep(sleep_time)
 
 
-def start_process(user_config, embassy_config, embassy_links):
+def start_process(driver, user_config, embassy_config, embassy_links):
     # Bypass reCAPTCHA
     driver.get(embassy_links['sign_in_link'])
     time.sleep(STEP_TIME)
     Wait(driver, 60).until(EC.presence_of_element_located((By.NAME, "commit")))
-    auto_action("Click bounce", "xpath", '//a[@class="down-arrow bounce"]', "click", "", STEP_TIME)
-    auto_action("Email", "id", "user_email", "send", user_config['email'], STEP_TIME)
-    auto_action("Password", "id", "user_password", "send", user_config['password'], STEP_TIME)
-    auto_action("Privacy", "class", "icheckbox", "click", "", STEP_TIME)
-    auto_action("Enter Panel", "name", "commit", "click", "", STEP_TIME)
+    auto_action(driver, "Click bounce", "xpath", '//a[@class="down-arrow bounce"]', "click", "", STEP_TIME)
+    auto_action(driver, "Email", "id", "user_email", "send", user_config['email'], STEP_TIME)
+    auto_action(driver, "Password", "id", "user_password", "send", user_config['password'], STEP_TIME)
+    auto_action(driver, "Privacy", "class", "icheckbox", "click", "", STEP_TIME)
+    auto_action(driver, "Enter Panel", "name", "commit", "click", "", STEP_TIME)
     Wait(driver, 60).until(EC.presence_of_element_located((By.XPATH, "//a[contains(text(), '" + embassy_config['continue'] + "')]")))
     print("\n\tlogin successful!\n")
     print(f'Cookies: {driver.get_cookies()}')
 
 
-def get_first_available_appointments(embassy_links):
+def get_first_available_appointments(driver, embassy_links):
     driver.get(embassy_links['payment_url'])
     res = {}
     for i in range(1, 3):
         location = driver.find_elements(by=By.XPATH, value=f'//*[@id="paymentOptions"]/div[2]/table/tbody/tr[{i}]/td[1]')
         status = driver.find_elements(by=By.XPATH, value=f'//*[@id="paymentOptions"]/div[2]/table/tbody/tr[{i}]/td[2]')
         if not location or not status:
+            print("Can't find elements with dates on the page")
             return None
         location = location[0].text
         status = status[0].text
@@ -121,28 +122,27 @@ def get_first_available_appointments(embassy_links):
 
 @dataclass
 class UserState:
-    cookies: any = None
+    driver: webdriver = None
     id: int = None
     first_loop: bool = True
     ban_datetime: datetime = None
     config: dict = None
 
 
-if config['chrome_driver']['local_use']:
-    options = Options()
-    options.add_argument("--headless")
-    options.add_argument("--disable-extensions")
-    options.add_argument("--disable-dev-shm-usage")
-    options.add_argument("--no-sandbox")
-    options.add_argument("--incognito")
-    driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
-else:
-    driver = webdriver.Remote(command_executor=config['chrome_driver']['hub_address'], options=webdriver.ChromeOptions())
-
-
 states = []
 for i in range(len(config['users'])):
-    states.append(UserState(id=i, config=config['users'][i]))
+    if config['chrome_driver']['local_use']:
+        options = Options()
+        options.add_argument("--headless")
+        options.add_argument("--disable-extensions")
+        options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--no-sandbox")
+        options.add_argument("--incognito")
+        driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=options)
+    else:
+        driver = webdriver.Remote(command_executor=config['chrome_driver']['hub_address'], options=webdriver.ChromeOptions())
+    states.append(UserState(driver=driver, id=i, config=config['users'][i]))
+
 
 
 def create_users_iterator():
@@ -154,36 +154,33 @@ def create_users_iterator():
 
 if __name__ == "__main__":
     prev_result_per_applicants = {}
-    embassy_config = config['embassies'][0]
     users_iter = create_users_iterator()
     banned_count = 0
     t0 = time.time()
     Req_count = 0
+    embassy_config = config['embassies'][0]
     while 1:
         try:
             user_state = next(users_iter)
             if user_state.ban_datetime and datetime.now() - user_state.ban_datetime < timedelta(hours=config['time']['ban_cooldown_hours']):
                 print(f"User {user_state.config['email']} is waiting for unban")
-                time.sleep(5)
+                time.sleep(random.randint(config['time']['retry_lower_bound'], config['time']['retry_upper_bound']))
                 continue
 
             links = get_links_for_embassy(user_state.config, embassy_config)
             if user_state.first_loop:
                 start_process(
+                    driver=user_state.driver,
                     user_config=user_state.config,
                     embassy_config=embassy_config,
                     embassy_links=links,
                 )
-                user_state.cookies = {x['name']: x['value'] for x in driver.get_cookies()}
                 user_state.first_loop = False
 
-            driver.delete_all_cookies()
-            for name, value in user_state.cookies.items():
-                driver.add_cookie({'name': name, 'value': value})
             Req_count += 1
             print("-" * 60 + f"\nRequest count: {Req_count}, Log time: {datetime.today()}\n")
-            appointments = get_first_available_appointments(links)
-            if all(x == "No Appointments Available" for x in appointments.values()):
+            appointments = get_first_available_appointments(user_state.driver, links)
+            if appointments is not None and all(x == "No Appointments Available" for x in appointments.values()):
                 print(f"Probably user {user_state.config['email']} is banned")
                 user_state.ban_datetime = datetime.now()
                 banned_count += 1
@@ -191,7 +188,7 @@ if __name__ == "__main__":
                     print(f"All users are banned, resting for {config['time']['ban_cooldown_hours']}h")
                     time.sleep(config['time']['ban_cooldown_hours'] * hour)
                     banned_count = 0
-                driver.get(links['sign_out_link'])
+                user_state.driver.get(links['sign_out_link'])
                 user_state.first_loop = True
                 continue
             if appointments is not None and appointments != prev_result_per_applicants.get(user_state.config['applicants']):
@@ -204,7 +201,7 @@ if __name__ == "__main__":
                 if total_time > config['time']['work_limit_hours'] * hour:
                     # Let program rest a little
                     print("REST", f"Break-time after {config['time']['work_limit_hours']} hours | Repeated {Req_count} times")
-                    driver.get(links['sign_out_link'])
+                    user_state.driver.get(links['sign_out_link'])
                     time.sleep(config['time']['work_cooldown_hours'] * hour)
                     user_state.first_loop = True
                     t0 = time.time()
