@@ -38,15 +38,12 @@ def get_links_for_embassy(user_config, embassy_config):
     schedule_id = user_config['schedule_id']
     group_id = user_config['group_id']
     country_code = embassy_config['country_code']
-    facility_id = embassy_config['facility_id']
     return {
         'sign_in_link': f"https://ais.usvisa-info.com/{country_code}/niv/users/sign_in",
         'appointment_url': f"https://ais.usvisa-info.com/{country_code}/niv/schedule/{schedule_id}/appointment",
         'payment_url': f"https://ais.usvisa-info.com/{country_code}/niv/schedule/{schedule_id}/payment",
-        'date_url': f"https://ais.usvisa-info.com/{country_code}/niv/schedule/{schedule_id}/appointment/days/{facility_id}.json?appointments[expedite]=false",
-        'time_url': f"https://ais.usvisa-info.com/{country_code}/niv/schedule/{schedule_id}/appointment/times/{facility_id}.json?date=%s&appointments[expedite]=false",
         'sign_out_link': f"https://ais.usvisa-info.com/{country_code}/niv/users/sign_out",
-        'group_link': f"https://ais.usvisa-info.com/en-il/niv/groups/{group_id}",
+        'group_link': f"https://ais.usvisa-info.com/{country_code}/niv/groups/{group_id}",
     }
 
 
@@ -105,12 +102,12 @@ def start_process(driver, user_config, embassy_config, embassy_links):
     print(f'Cookies: {driver.get_cookies()}')
 
 
-def get_first_available_appointments(driver, embassy_links):
+def get_first_available_appointments(driver, embassy_links, embassy_configs):
     driver.get(embassy_links['payment_url'])
     res = {}
-    for i in range(1, 3):
-        location = driver.find_elements(by=By.XPATH, value=f'//*[@id="paymentOptions"]/div[2]/table/tbody/tr[{i}]/td[1]')
-        status = driver.find_elements(by=By.XPATH, value=f'//*[@id="paymentOptions"]/div[2]/table/tbody/tr[{i}]/td[2]')
+    for element in embassy_configs['elements']:
+        location = driver.find_elements(by=By.XPATH, value=element['location_xpath'])
+        status = driver.find_elements(by=By.XPATH, value=element['status_xpath'])
         if not location or not status:
             print("Can't find elements with dates on the page")
             return None
@@ -179,7 +176,7 @@ if __name__ == "__main__":
 
             Req_count += 1
             print("-" * 60 + f"\nRequest count: {Req_count}, Log time: {datetime.today()}\n")
-            appointments = get_first_available_appointments(user_state.driver, links)
+            appointments = get_first_available_appointments(user_state.driver, links, embassy_config)
             if appointments is not None and all(x == "No Appointments Available" for x in appointments.values()):
                 print(f"Probably user {user_state.config['email']} is banned")
                 user_state.ban_datetime = datetime.now()
@@ -192,7 +189,7 @@ if __name__ == "__main__":
                 user_state.first_loop = True
                 continue
             if appointments is not None and appointments != prev_result_per_applicants.get(user_state.config['applicants']):
-                send_notification('SUCCESS', f'Applicants: {user_state.config["applicants"]}\n' + json.dumps(appointments, sort_keys=True))
+                send_notification('SUCCESS', f'{config["telegram"]["msg_prefix"]}\nApplicants: {user_state.config["applicants"]}\n' + json.dumps(appointments, sort_keys=True))
             else:
                 RETRY_WAIT_TIME = random.randint(config['time']['retry_lower_bound'], config['time']['retry_upper_bound'])
                 total_time = time.time() - t0

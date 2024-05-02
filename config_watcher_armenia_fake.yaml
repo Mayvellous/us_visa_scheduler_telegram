@@ -1,0 +1,36 @@
+users:
+  - email: test@mail.ru
+    password: 'test-test-test'
+    schedule_id: 12345678
+    group_id: 12345678
+    applicants: 2
+  - email: test.test-0h@icloud.com
+    password: 'test-test-test'
+    schedule_id: 12345678
+    group_id: 12345678
+    applicants: 2
+
+embassies:
+  - country_code: en-am
+    facility_id: 122 # Yerevan
+    continue: 'Continue'
+    elements:
+      - location_xpath: '//*[@id="paymentOptions"]/div[2]/table/tbody/tr/td[1]'
+        status_xpath: '//*[@id="paymentOptions"]/div[2]/table/tbody/tr/td[2]'
+
+chrome_driver:
+  local_use: True
+  hub_address: http://localhost:9515/wd/hub  # HUB_ADDRESS is mandatory only when LOCAL_USE = False
+
+telegram:
+  bot_token: 1111111111:testtesttesttesttesttest
+  chat_id: -1111111111111
+  thread_id: null
+  msg_prefix: 'Armenia'
+
+time:
+  retry_lower_bound: 100
+  retry_upper_bound: 150
+  work_limit_hours: 2.0
+  work_cooldown_hours: 0.25
+  ban_cooldown_hours: 0.5

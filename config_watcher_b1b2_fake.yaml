@@ -1,0 +1,69 @@
+users:
+  - email: test@mail.ru
+    password: 'test-test-test'
+    schedule_id: 12345678
+    group_id: 12345678
+    applicants: 1
+  - email: test@mail.ru
+    password: 'test-test-test'
+    schedule_id: 12345678
+    group_id: 12345678
+    applicants: 1
+  - email: test@mail.ru
+    password: 'test-test-test'
+    schedule_id: 12345678
+    group_id: 12345678
+    applicants: 1
+  - email: test@mail.ru
+    password: 'test-test-test'
+    schedule_id: 12345678
+    group_id: 12345678
+    applicants: 1
+  - email: test@mail.ru
+    password: 'test-test-test'
+    schedule_id: 12345678
+    group_id: 12345678
+    applicants: 1
+  - email: test@mail.ru
+    password: 'test-test-test'
+    schedule_id: 12345678
+    group_id: 12345678
+    applicants: 1
+  - email: test@mail.ru
+    password: 'test-test-test'
+    schedule_id: 12345678
+    group_id: 12345678
+    applicants: 1
+
+embassies:
+  - country_code: en-il
+    facility_id: 96 # Tel Aviv
+    continue: 'Continue'
+    elements:
+      - location_xpath: '//*[@id="paymentOptions"]/div[2]/table/tbody/tr[1]/td[1]'
+        status_xpath: '//*[@id="paymentOptions"]/div[2]/table/tbody/tr[1]/td[2]'
+      - location_xpath: '//*[@id="paymentOptions"]/div[2]/table/tbody/tr[2]/td[1]'
+        status_xpath: '//*[@id="paymentOptions"]/div[2]/table/tbody/tr[2]/td[2]'
+
+  - country_code: en-il
+    facility_id: 97 # Jerusalem
+    elements_range: [1, 2]
+    location_xpath: '//*[@id="paymentOptions"]/div[2]/table/tbody/tr[{i}]/td[1]'
+    status_xpath: '//*[@id="paymentOptions"]/div[2]/table/tbody/tr[{i}]/td[2]'
+
+chrome_driver:
+  local_use: True
+  hub_address: http://localhost:9515/wd/hub  # HUB_ADDRESS is mandatory only when LOCAL_USE = False
+
+telegram:
+  bot_token: 1111111111:testtesttesttesttesttest
+  chat_id: -1111111111111
+  thread_id: null
+  msg_prefix: ''
+
+time:
+  retry_lower_bound: 100
+  retry_upper_bound: 150
+  work_limit_hours: 2.0
+  work_cooldown_hours: 0.25
+  ban_cooldown_hours: 0.5
