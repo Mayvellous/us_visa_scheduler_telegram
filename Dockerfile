@@ -11,4 +11,4 @@ COPY . .
 
 EXPOSE 10000
 
-CMD ["python", "visa_no_payment.py"]
+CMD ["python", "visa_no_payment.py", "--config", "config.yaml"]
