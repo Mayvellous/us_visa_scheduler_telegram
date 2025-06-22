@@ -2,7 +2,7 @@ FROM python:3
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y chromium
+RUN apt-get update && apt-get install -y chromium chromium-driver
 
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
