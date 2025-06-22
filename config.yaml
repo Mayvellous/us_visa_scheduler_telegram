@@ -1,31 +1,31 @@
 users:
-  - email: account@gmail.com
-    password: account_pass
-    schedule_id: 99999999  # Find schedule_id in re-schedule page link https://ais.usvisa-info.com/en-am/niv/schedule/{SCHEDULE_ID}/appointment
-    group_id: 99999999  # Find schedule_id in re-schedule page link https://ais.usvisa-info.com/en-am/niv/schedule/{SCHEDULE_ID}/appointment
-  - email: account2@gmail.com
-    password: account_pass2
-    schedule_id: 88888888
-    group_id: 88888888
+  - email: zakanimay@gmail.com
+    password: Miyann@1001
+    schedule_id: 334029677  # Find schedule_id in re-schedule page link https://ais.usvisa-info.com/en-am/niv/schedule/{SCHEDULE_ID}/appointment
+    group_id: 334029677  # Find schedule_id in re-schedule page link https://ais.usvisa-info.com/en-am/niv/schedule/{SCHEDULE_ID}/appointment
+  - email: zakanimay@gmail.com
+    password: Miyann@1001
+    schedule_id: 334029677
+    group_id: 334029677
 
-period_start: 2023-03-20
-perido_end: 2023-06-01
+period_start: 2025-06-22
+perido_end: 2025-11-16
 # Change "en-am-yer", based on your embassy Abbreviation in embassy.py list.
 
 embassies:
-  - country_code: en-il
-    facility_id: 96 # Tel Aviv
+  - country_code: en-ma
+    facility_id: 87 # Casablanca
     continue: 'Continue'
   - country_code: en-il
-    facility_id: 97 # Jerusalem
+    facility_id: 87 # Casablanca
 
 chrome_driver:
   local_use: True
   hub_address: http://localhost:9515/wd/hub  # HUB_ADDRESS is mandatory only when LOCAL_USE = False
 
 telegram:
-  bot_token: some_token
-  chat_id: 123456789
+  bot_token: 7975249503:AAH-gbgajdiTDGe5dB7ag6TG1Vx0MsjwBy4
+  chat_id: 6881997099
   message_thread_id: null
 
 time:
