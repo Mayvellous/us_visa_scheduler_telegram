@@ -17,11 +17,17 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait as Wait
 from selenium.webdriver.common.by import By
-from webdriver_manager.chrome import ChromeDriverManager
+import argparse
 
 parser = argparse.ArgumentParser()
 parser.add_argument('--config', default='config.ini')
 args = parser.parse_args()
+
+options = Options()
+# (your existing options here)
+
+# Use system-installed chromedriver path instead of ChromeDriverManager
+driver = webdriver.Chrome(service=Service('/usr/bin/chromedriver'), options=options)
 
 config = {}
 with open(args.config) as f:
