@@ -1,11 +1,19 @@
 FROM python:3
+
 WORKDIR /app
 
-# Install some libs for chromedriver
+# Install Chromium for the bot
 RUN apt-get update && apt-get install -y chromium
 
-# Pip reqs
-COPY requirements.txt ./
+# Install Python libraries
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# COPY . .
+# Copy your entire project
+COPY . .
+
+# Fake port for Render (required)
+EXPOSE 10000
+
+# Run the Telegram visa bot
+CMD ["bash", "run_docker_watcher.sh"]
